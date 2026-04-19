@@ -25,3 +25,5 @@ require (
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	golang.org/x/oauth2 v0.27.0 // indirect
 )
+
+replace github.com/gokrazy/internal => ../internal
