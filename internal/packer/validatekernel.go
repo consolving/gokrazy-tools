@@ -11,8 +11,8 @@ import (
 )
 
 // kernelGoarch returns the GOARCH value that corresponds to the provided
-// vmlinuz header. It returns one of "arm", "arm64", "386", "amd64" or the empty
-// string if not detected.
+// vmlinuz header. It returns one of "arm", "arm64", "riscv64", "386", "amd64"
+// or the empty string if not detected.
 func kernelGoarch(hdr []byte) string {
 	// Some constants from the file(1) command's magic.
 	const (
@@ -22,6 +22,9 @@ func kernelGoarch(hdr []byte) string {
 		// 64-bit arm: https://github.com/file/file/blob/65be1904/magic/Magdir/linux#L253-L254
 		arm64Magic       = 0x644d5241
 		arm64MagicOffset = 0x38
+		// riscv64: https://github.com/torvalds/linux/blob/master/Documentation/riscv/boot-image-header.rst
+		riscvMagic       = 0x43534952 // "RISC"
+		riscvMagicOffset = 0x30
 		// x86: https://github.com/file/file/blob/65be1904/magic/Magdir/linux#L137-L152
 		x86Magic            = 0xaa55
 		x86MagicOffset      = 0x1fe
@@ -32,6 +35,9 @@ func kernelGoarch(hdr []byte) string {
 	}
 	if len(hdr) >= arm32MagicOffset+4 && binary.LittleEndian.Uint32(hdr[arm32MagicOffset:]) == arm32Magic {
 		return "arm"
+	}
+	if len(hdr) >= riscvMagicOffset+4 && binary.LittleEndian.Uint32(hdr[riscvMagicOffset:]) == riscvMagic {
+		return "riscv64"
 	}
 	if len(hdr) >= x86XloadflagsOffset+2 && binary.LittleEndian.Uint16(hdr[x86MagicOffset:]) == x86Magic {
 		// XLF0 in arch/x86/boot/header.S

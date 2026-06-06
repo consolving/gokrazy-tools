@@ -15,7 +15,6 @@ import (
 	"github.com/gokrazy/internal/deviceconfig"
 	"github.com/gokrazy/internal/httpclient"
 	"github.com/gokrazy/internal/updateflag"
-	"github.com/gokrazy/tools/packer"
 	"github.com/gokrazy/updater"
 )
 
@@ -241,7 +240,7 @@ func (p *Pack) overwriteDevice(dev string, root *FileInfo, rootDeviceFiles []dev
 		return err
 	}
 
-	if _, err := f.Seek((p.FirstPartitionOffsetSectors+(100*MB/512))*512, io.SeekStart); err != nil {
+	if _, err := f.Seek((p.FirstPartitionOffsetSectors+p.BootPartitionSizeSectors())*512, io.SeekStart); err != nil {
 		return err
 	}
 
@@ -351,7 +350,7 @@ func (p *Pack) overwriteFile(root *FileInfo, rootDeviceFiles []deviceconfig.Root
 		return 0, 0, err
 	}
 
-	if _, err := f.Seek(p.FirstPartitionOffsetSectors*512+100*MB, io.SeekStart); err != nil {
+	if _, err := f.Seek(p.FirstPartitionOffsetSectors*512+p.BootPartitionBytes(), io.SeekStart); err != nil {
 		return 0, 0, err
 	}
 
@@ -379,7 +378,7 @@ func (p *Pack) overwriteFile(root *FileInfo, rootDeviceFiles []deviceconfig.Root
 	}
 
 	log.Printf("If your applications need to store persistent data, create a file system using e.g.:")
-	log.Printf("\t/sbin/mkfs.ext4 -F -E offset=%v %s %v", p.FirstPartitionOffsetSectors*512+1100*MB, p.Cfg.InternalCompatibilityFlags.Overwrite, packer.PermSizeInKB(firstPartitionOffsetSectors, uint64(p.Cfg.InternalCompatibilityFlags.TargetStorageBytes)))
+	log.Printf("\t/sbin/mkfs.ext4 -F -E offset=%v %s %v", p.FirstPartitionOffsetSectors*512+p.BootPartitionBytes()+1000*MB, p.Cfg.InternalCompatibilityFlags.Overwrite, p.Pack.PermSizeInKB(firstPartitionOffsetSectors, uint64(p.Cfg.InternalCompatibilityFlags.TargetStorageBytes)))
 	log.Printf("")
 
 	return int64(bs), int64(rs), f.Close()

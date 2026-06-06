@@ -57,7 +57,7 @@ func (pack *Pack) logicUpdate(ctx context.Context, isDev bool, bootSize int64, r
 			if err != nil {
 				return err
 			}
-			if _, err := rootFile.Seek(pack.firstPartitionOffsetSectors*512+100*MB, io.SeekStart); err != nil {
+			if _, err := rootFile.Seek(pack.firstPartitionOffsetSectors*512+pack.Pack.BootPartitionBytes(), io.SeekStart); err != nil {
 				return err
 			}
 			rootReader = &io.LimitedReader{

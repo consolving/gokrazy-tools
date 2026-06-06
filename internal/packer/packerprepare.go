@@ -77,11 +77,15 @@ func (pack *Pack) logicPrepare(ctx context.Context) error {
 	}
 
 	var mbrOnlyWithoutGpt bool
+	var bootPartitionSizeMB int64
+	var mbrPartitionType byte
 	pack.firstPartitionOffsetSectors = deviceconfig.DefaultBootPartitionStartLBA
 	if cfg.DeviceType != "" {
 		if devcfg, ok := deviceconfig.GetDeviceConfigBySlug(cfg.DeviceType); ok {
 			pack.rootDeviceFiles = devcfg.RootDeviceFiles
 			mbrOnlyWithoutGpt = devcfg.MBROnlyWithoutGPT
+			bootPartitionSizeMB = devcfg.BootPartitionSizeMB
+			mbrPartitionType = devcfg.MBRPartitionType
 			if devcfg.BootPartitionStartLBA != 0 {
 				pack.firstPartitionOffsetSectors = devcfg.BootPartitionStartLBA
 			}
@@ -91,6 +95,8 @@ func (pack *Pack) logicPrepare(ctx context.Context) error {
 	}
 
 	pack.Pack = packer.NewPackForHost(pack.firstPartitionOffsetSectors, cfg.Hostname)
+	pack.Pack.BootPartitionSizeMB = bootPartitionSizeMB
+	pack.Pack.MBRPartitionType = mbrPartitionType
 
 	newInstallation := cfg.InternalCompatibilityFlags.Update == ""
 	useGPT := newInstallation && !mbrOnlyWithoutGpt

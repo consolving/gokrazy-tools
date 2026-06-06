@@ -172,6 +172,8 @@ var (
 	}
 	kernelGlobs = []string{
 		"boot.scr", // u-boot script file
+		"boot.sd",  // u-boot image for Cvitek/Sophgo SoCs
+		"fip.bin",  // BL2+U-Boot FIP for Cvitek/Sophgo SoCs
 		"vmlinuz",
 		"*.dtb",
 		"overlays/*.dtbo",
@@ -252,12 +254,38 @@ func (p *Pack) writeBoot(f io.Writer, mbrfilename string) error {
 	log.Printf("Kernel directory: %s", kernelDir)
 
 	bufw := bufio.NewWriter(f)
-	fw, err := fat.NewWriter(bufw)
+
+	// Milk-V Duo (CV1800B) BootROM requires specific FAT BPB values
+	// matching those created by mkfs.fat on the vendor Buildroot image:
+	// 2 FAT copies, 512 root dir entries, 8 heads, hidden_sectors=0,
+	// drive_number=0x00. Also skip vmlinuz (not needed, fits inside boot.sd).
+	var fatCfg fat.Config
+	var kernelGlobsFiltered []string
+	if p.Cfg.DeviceType == "milkv_duo" {
+		fatCfg = fat.Config{
+			NumFATs:          2,
+			MinRootEntries:   512,
+			Heads:            8,
+			HiddenSectorsSet: true,
+			DriveNumberSet:   true,
+			SpareSectors:     1024, // 512KB free space for boot logs
+		}
+		for _, g := range kernelGlobs {
+			if g == "vmlinuz" {
+				continue
+			}
+			kernelGlobsFiltered = append(kernelGlobsFiltered, g)
+		}
+	} else {
+		kernelGlobsFiltered = kernelGlobs
+	}
+
+	fw, err := fat.NewWriter(bufw, fatCfg)
 	if err != nil {
 		return err
 	}
 
-	err = p.copyGlobsToBoot(fw, kernelDir, kernelGlobs)
+	err = p.copyGlobsToBoot(fw, kernelDir, kernelGlobsFiltered)
 	if err != nil {
 		return err
 	}
@@ -769,7 +797,10 @@ func (p *Pack) writeMBR(firstPartitionOffsetSectors int64, f io.ReadSeeker, fw i
 	}
 	vmlinuzOffset, _, err := rd.Extents("/vmlinuz")
 	if err != nil {
-		return err
+		// vmlinuz not on the boot partition (e.g. Milk-V Duo which
+		// uses boot.sd FIT image instead). Skip MBR patching.
+		log.Printf("vmlinuz not found on boot partition, skipping MBR patching")
+		return nil
 	}
 	cmdlineOffset, _, err := rd.Extents("/cmdline.txt")
 	if err != nil {

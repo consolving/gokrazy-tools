@@ -30,3 +30,5 @@ require (
 )
 
 replace github.com/gokrazy/internal => ../internal
+
+replace github.com/anupcshan/gokrazy-milkv-duo-kernel => /root/GIT/gokrazy/gokrazy-milkv-duo-kernel
