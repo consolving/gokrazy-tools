@@ -222,6 +222,7 @@ func (pack *Pack) logicBuild(bindir string) error {
 		return err
 	}
 	pack.kernelDir = kernelDir
+	lib := root.mustFindDirent("lib")
 	modulesDir := filepath.Join(kernelDir, "lib", "modules")
 	if _, err := os.Stat(modulesDir); err == nil {
 		log.Printf("Including loadable kernel modules from:")
@@ -235,8 +236,24 @@ func (pack *Pack) logicBuild(bindir string) error {
 		if err != nil {
 			return err
 		}
-		lib := root.mustFindDirent("lib")
 		lib.Dirents = append(lib.Dirents, modules)
+	}
+
+	// include lib/firmware from kernelPackage dir, if present
+	firmwareDir := filepath.Join(kernelDir, "lib", "firmware")
+	if _, err := os.Stat(firmwareDir); err == nil {
+		log.Printf("Including firmware files from:")
+		log.Printf("  %s", firmwareDir)
+		firmware := &FileInfo{
+			Filename: "firmware",
+		}
+		trace.WithRegion(context.Background(), "kernelfw", func() {
+			_, err = addToFileInfo(firmware, firmwareDir)
+		})
+		if err != nil {
+			return err
+		}
+		lib.Dirents = append(lib.Dirents, firmware)
 	}
 
 	etc := root.mustFindDirent("etc")
