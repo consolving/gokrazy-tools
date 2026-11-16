@@ -25,12 +25,6 @@ type Pack struct {
 		VL805SHA256    string // vl805.sig
 	}
 	FirstPartitionOffsetSectors int64
-	// BootPartitionSizeMB overrides the default 100MB boot partition size.
-	// 0 means use the default (100MB).
-	BootPartitionSizeMB int64
-	// MBRPartitionType overrides the default 0x0c (FAT32 LBA) partition type.
-	// 0 means use the default (0x0c).
-	MBRPartitionType byte
 }
 
 func NewPackForHost(firstPartitionOffsetSectors int64, hostname string) Pack {
@@ -102,22 +96,12 @@ const MB = 1024 * 1024
 
 // BootPartitionSizeSectors returns the boot partition size in 512-byte sectors.
 func (p *Pack) BootPartitionSizeSectors() int64 {
-	if p.BootPartitionSizeMB > 0 {
-		return p.BootPartitionSizeMB * MB / 512
-	}
 	return 100 * MB / 512
 }
 
 // BootPartitionBytes returns the boot partition size in bytes.
 func (p *Pack) BootPartitionBytes() int64 {
 	return p.BootPartitionSizeSectors() * 512
-}
-
-func (p *Pack) fatPartitionType() byte {
-	if p.MBRPartitionType != 0 {
-		return p.MBRPartitionType
-	}
-	return FAT
 }
 
 func (p *Pack) permSize(firstPartitionOffsetSectors int64, devsize uint64) uint32 {
@@ -148,7 +132,7 @@ func (p *Pack) writePartitionTable(firstPartitionOffsetSectors int64, w io.Write
 		// Partition 1 must be present for the Raspberry Pi bootloader
 		active,
 		invalidCHS,
-		p.fatPartitionType(),
+		FAT,
 		invalidCHS,
 		uint32(firstPartitionOffsetSectors),
 		uint32(p.BootPartitionSizeSectors()),
@@ -188,7 +172,7 @@ func (p *Pack) writeMBRPartitionTable(firstPartitionOffsetSectors int64, w io.Wr
 		// Partition 1 must be present for the Raspberry Pi bootloader
 		active,
 		invalidCHS,
-		p.fatPartitionType(),
+		FAT,
 		invalidCHS,
 		uint32(firstPartitionOffsetSectors),
 		uint32(bootSizeSectors),

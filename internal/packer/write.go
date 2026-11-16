@@ -255,21 +255,10 @@ func (p *Pack) writeBoot(f io.Writer, mbrfilename string) error {
 
 	bufw := bufio.NewWriter(f)
 
-	// Milk-V Duo (CV1800B) BootROM requires specific FAT BPB values
-	// matching those created by mkfs.fat on the vendor Buildroot image:
-	// 2 FAT copies, 512 root dir entries, 8 heads, hidden_sectors=0,
-	// drive_number=0x00. Also skip vmlinuz (not needed, fits inside boot.sd).
-	var fatCfg fat.Config
+	// Skip vmlinuz for the Milk-V Duo: the kernel is already embedded in the
+	// FIT image (boot.sd), so the standalone 27MB kernel file is redundant.
 	var kernelGlobsFiltered []string
 	if p.Cfg.DeviceType == "milkv_duo" {
-		fatCfg = fat.Config{
-			NumFATs:          2,
-			MinRootEntries:   512,
-			Heads:            8,
-			HiddenSectorsSet: true,
-			DriveNumberSet:   true,
-			SpareSectors:     1024, // 512KB free space for boot logs
-		}
 		for _, g := range kernelGlobs {
 			if g == "vmlinuz" {
 				continue
@@ -280,7 +269,7 @@ func (p *Pack) writeBoot(f io.Writer, mbrfilename string) error {
 		kernelGlobsFiltered = kernelGlobs
 	}
 
-	fw, err := fat.NewWriter(bufw, fatCfg)
+	fw, err := fat.NewWriter(bufw)
 	if err != nil {
 		return err
 	}
